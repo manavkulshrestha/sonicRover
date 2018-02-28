@@ -122,7 +122,7 @@ void loop() {
         while(word.charAt(i) != '*'){
           if((word.charAt(i) >= '0' && word.charAt(i) <= '9') || word.charAt(i) == '-') ycoord += word.charAt(i);
           i++;
-        }
+        }x
 
         xcoordint = (int)xcoord.toInt();
         ycoordint = (int)ycoord.toInt();
@@ -231,7 +231,7 @@ uint8_t* toData(String s) {
   s.toCharArray(radiopacket, 20);
   // for(int i=0; i<s.length(); i++)
   //   radiopacket[i] = s[i];
-  return (uint8_t *)radiopacket;
+  return (uint8_t*)radiopacket;
 }
 
 // void sendLevel(int level){
