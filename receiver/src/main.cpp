@@ -41,6 +41,7 @@ int clip(int num);
 int getUltrasonicDistance();
 uint8_t* toData(String s);
 void send(String s);
+double scale(double number, double oldStart, double oldEnd, double newStart, double newEnd);
 // void sendLevel(int level);
 
 void setup() {
@@ -232,6 +233,10 @@ uint8_t* toData(String s) {
   // for(int i=0; i<s.length(); i++)
   //   radiopacket[i] = s[i];
   return (uint8_t*)radiopacket;
+}
+
+double scale(double number, double oldStart, double oldEnd, double newStart, double newEnd) {
+  return (((number-oldStart)*((newEnd-newStart)/(oldEnd-oldStart)))+newStart);
 }
 
 // void sendLevel(int level){
