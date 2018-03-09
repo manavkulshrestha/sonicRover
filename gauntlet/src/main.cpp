@@ -27,7 +27,7 @@ uint32_t button_mask = (1 << BUTTON_RIGHT) | (1 << BUTTON_DOWN) | (1 << BUTTON_L
 
 RH_RF69 rf69(RFM69_CS, RFM69_INT);
 
-void sendJoystickData(int x, int y);
+void sendData(int x, int y, char button);
 void convertJoystickData(int coords[]);
 void setHapticPower(int level);
 
@@ -87,37 +87,71 @@ void loop() {
   int i, level;
   String word, stringLevel;
   char temp[20];
+  char button;
   // static unsigned long currentMillis, previousMillis;
+
+  if(!digitalRead(IRQ_PIN)){
+    uint32_t buttons = ss.digitalReadBulk(button_mask);
+    Serial.println(buttons, BIN);
+    Serial.print((unsigned short)buttons);
+    switch(((unsigned short)buttons)) {
+      //experimental and ugly. Change to bitwise logic later
+      case 18112:
+        button = 'N';
+        break;
+      case 17600:
+        button = 'L';
+        break;
+      case 18048:
+        button = 'R';
+        break;
+      case 17088:
+        button = 'U';
+        break;
+      case 17984:
+        button = 'D';
+        break;
+      case 1782:
+        button = 'S';
+        break;
+    }
+  } else {
+    button = '!';
+  }
+
+  Serial.print("button: "); Serial.println(button);
+  delay(10);
 
   convertJoystickData(coords);
   //Serial.print(coords[0]); Serial.print(", "); Serial.println(coords[1]);
-  sendJoystickData(coords[0], coords[1]);
+  sendData(coords[0], coords[1], button);
 
   //listens for haptic data
-  if (rf69.available()) {
-      uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
-      uint8_t len = sizeof(buf);
-      if (rf69.recv(buf, &len)) {
-          if (!len) return;
-          buf[len] = 0;
-          Serial.println((char*)buf);
-          for(int i = 0; i<20; i++){
-              temp[i] = (char) buf[i];
-          }
-          word = temp;
-          i = 0;
-          while(word.charAt(i) != '*'){
-              if((word.charAt(i) >= '0' && word.charAt(i) <= '9') || word.charAt(i) == '-') stringLevel += word.charAt(i);
-              i++;
-          }
-
-          level = (int) stringLevel.toInt();
-          setHapticPower(level);  //sets the haptic motor to the received power level
+  if(rf69.available()) {
+    uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
+    uint8_t len = sizeof(buf);
+    if(rf69.recv(buf, &len)) {
+      if(!len)
+        return;
+      buf[len] = 0;
+      Serial.println((char*)buf);
+      for(int i = 0; i<20; i++){
+          temp[i] = (char) buf[i];
       }
+      word = temp;
+      i = 0;
+      while(word.charAt(i) != '*'){
+          if((word.charAt(i) >= '0' && word.charAt(i) <= '9') || word.charAt(i) == '-') stringLevel += word.charAt(i);
+          i++;
+      }
+
+      level = (int) stringLevel.toInt();
+      setHapticPower(level);  //sets the haptic motor to the received power level
+    }
   }
 }
 
-void sendJoystickData(int x, int y){
+void sendData(int x, int y, char button) {
   char radiopacket[20];
   char temp[5];
   String tempWord = "####";
@@ -129,9 +163,10 @@ void sendJoystickData(int x, int y){
   itoa((int) y, temp, 10);
   tempWord += temp;
   tempWord += "* ";
+  tempWord += button;
   tempWord.toCharArray(radiopacket, 20);
   //Serial.println(radiopacket);
-  rf69.send((uint8_t *)radiopacket, strlen(radiopacket));
+  rf69.send((uint8_t*)radiopacket, strlen(radiopacket));
   rf69.waitPacketSent();
 }
 
@@ -141,7 +176,7 @@ void convertJoystickData(int coords[]){
   newx = coords[1] - (JOYSTICK_RANGE/2);  //coords[1] = old y
   newy = (JOYSTICK_RANGE/2) - coords[0];  //coords[0] = old x
 
-  coords[0] = (int) 2*(newy * 255 /JOYSTICK_RANGE);
+  coords[0] = (int)(2*(newy * 255 /JOYSTICK_RANGE));
   coords[1] = coords[0];
 
   // if(newx>-20 && newx<20 && newy>20 && newy<20){
@@ -149,12 +184,12 @@ void convertJoystickData(int coords[]){
   //   coords[1] = 0;
   // }
   if(newx > (JOYSTICK_RANGE/2)){
-    coords[0] -= (int) (2*(newx * 255)/JOYSTICK_RANGE);
-    coords[1] += (int) (2*(newx * 255)/JOYSTICK_RANGE);
+    coords[0] -= (int)(2*(newx * 255)/JOYSTICK_RANGE);
+    coords[1] += (int)(2*(newx * 255)/JOYSTICK_RANGE);
   }
   else if(newx < (JOYSTICK_RANGE/2)){
-    coords[1] -= (int) (-2*(newx * 255)/JOYSTICK_RANGE);
-    coords[0] += (int) (-2*(newx * 255)/JOYSTICK_RANGE);
+    coords[1] -= (int)(-2*(newx * 255)/JOYSTICK_RANGE);
+    coords[0] += (int)(-2*(newx * 255)/JOYSTICK_RANGE);
   }
 
   //coords[0] = pwmr, coords[1] = pwml
@@ -164,16 +199,16 @@ void setHapticPower(int level){
   int effect = 0;
 
   if(level == 0)
-   effect = 0;
- else if(level == 1)
+    effect = 0;
+  else if(level == 1)
    effect = 51;
- else if (level == 2)
+  else if(level == 2)
    effect = 50;
- else if (level == 3)
+  else if(level == 3)
    effect = 49;
- else if (level == 4)
+  else if(level == 4)
    effect = 48;
- else if (level == 5)
+  else if(level == 5)
    effect = 47;
 
  drv.setWaveform(0, effect);  // play effect

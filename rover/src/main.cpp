@@ -5,7 +5,7 @@
 #define JOYSTICK_RANGE 1023
 
 #define RF69_FREQ 900.0
-#define RADIOPACKET_MAX_LENGTH 20
+
 
 //radio pins
 #define RFM69_CS      8
@@ -39,7 +39,7 @@ void setDirection(char motor, bool direction);
 void setSpeed(int pwmr, int pwml);
 int clip(int num);
 int getUltrasonicDistance();
-void send(String s);
+void sendLevel(int level);
 
 void setup() {
   Serial.begin(115200);
@@ -96,11 +96,12 @@ void setup() {
 
 void loop(){
   String word, xcoord, ycoord;
+  int wordLength;
+  char button;
   char temp[20];
   int i = 0, xcoordint, ycoordint;//, pwmr = 0, pwml = 0;
   static unsigned long previousMillis = 0, currentMillis = 0;
   int level;
-  String levelStr;
 
   if (rf69.available()) {
       uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
@@ -113,6 +114,12 @@ void loop(){
           temp[i] = (char) buf[i];
         }
         word = temp;
+        Serial.print("pre-button stuff: "); Serial.println(word);
+        button = word[(wordLength = word.length())-1];
+        Serial.print("Button: "); Serial.println(button);
+        word = word.substring(0, wordLength-2);
+        Serial.print("Joystick stuff: "); Serial.println(word);
+
         i = 0;
         while(word.charAt(i) != '*'){
           if((word.charAt(i) >= '0' && word.charAt(i) <= '9') || word.charAt(i) == '-') xcoord += word.charAt(i);
@@ -133,9 +140,8 @@ void loop(){
 
         //after setting the speed of the motors, sends ultrasonic data back for haptics
         level = getUltrasonicDistance();
-        levelStr = ((char)(level+'0'))+"* ";
-        Serial.print(levelStr);
-        send(levelStr);
+        sendLevel(level);
+
         previousMillis = millis();  //reset timer
 
         digitalWrite(13, HIGH);
@@ -220,11 +226,17 @@ int getUltrasonicDistance(){
   else return 0;
 }
 
-void send(String s) {
-  char radiopacket[RADIOPACKET_MAX_LENGTH];
-  s.toCharArray(radiopacket, 20);
-// for(int i=0; i<s.length(); i++)
-//   radiopacket[i] = s[i];
-  rf69.send((uint8_t*)radiopacket, RADIOPACKET_MAX_LENGTH);
+void sendLevel(int level){
+  char radiopacket[20];
+  char temp[5];
+  String tempWord = "####";
+
+  //Serial.print(x); Serial.print(", "); Serial.println(y);
+  itoa((int) level, temp, 10);
+  tempWord = temp;
+  tempWord += "* ";
+  tempWord.toCharArray(radiopacket, 20);
+  //Serial.println(radiopacket);
+  rf69.send((uint8_t *)radiopacket, strlen(radiopacket));
   rf69.waitPacketSent();
 }
