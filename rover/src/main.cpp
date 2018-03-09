@@ -39,10 +39,7 @@ void setDirection(char motor, bool direction);
 void setSpeed(int pwmr, int pwml);
 int clip(int num);
 int getUltrasonicDistance();
-uint8_t* toData(String s);
 void send(String s);
-double scale(double number, double oldStart, double oldEnd, double newStart, double newEnd);
-// void sendLevel(int level);
 
 void setup() {
   Serial.begin(115200);
@@ -59,13 +56,15 @@ void setup() {
   digitalWrite(RFM69_RST, LOW);
   delay(10);
 
-  if(!rf69.init()) {
-    while(1);
+  if (!rf69.init()) {
+    //Serial.println("RFM69 radio init failed");
+    while (1);
   }
   Serial.println("RFM69 radio init OK!");
-  if(!rf69.setFrequency(RF69_FREQ)) {
+  if (!rf69.setFrequency(RF69_FREQ)) {
+    //Serial.println("setFrequency failed");
   }
-  rf69.setTxPower(20, true); // range from 14-20 for power, 2nd arg must be true for 69HCW
+  rf69.setTxPower(20, true);  // range from 14-20 for power, 2nd arg must be true for 69HCW
   uint8_t key[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
                     0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
   rf69.setEncryptionKey(key);
@@ -95,23 +94,23 @@ void setup() {
   setDirection('l', true);
 }
 
-void loop() {
+void loop(){
   String word, xcoord, ycoord;
   char temp[20];
   int i = 0, xcoordint, ycoordint;//, pwmr = 0, pwml = 0;
   static unsigned long previousMillis = 0, currentMillis = 0;
-  // int level;
-  String level;
+  int level;
+  String levelStr;
 
-  if(rf69.available()) {
+  if (rf69.available()) {
       uint8_t buf[RH_RF69_MAX_MESSAGE_LEN];
       uint8_t len = sizeof(buf);
-      if(rf69.recv(buf, &len)) {
-        if(!len) return;
+      if (rf69.recv(buf, &len)) {
+        if (!len) return;
         buf[len] = 0;
         Serial.println((char*)buf);
         for(int i = 0; i<20; i++){
-          temp[i] = (char)buf[i];
+          temp[i] = (char) buf[i];
         }
         word = temp;
         i = 0;
@@ -125,19 +124,18 @@ void loop() {
           i++;
         }
 
-        xcoordint = (int)xcoord.toInt();
-        ycoordint = (int)ycoord.toInt();
+        xcoordint = (int) xcoord.toInt();
+        ycoordint = (int) ycoord.toInt();
 
         //Serial.print(xcoordint); Serial.print(", "); Serial.println(ycoordint);
 
         setSpeed(xcoordint, ycoordint);
 
         //after setting the speed of the motors, sends ultrasonic data back for haptics
-        level = ((char)(getUltrasonicDistance()+'0'))+"* ";
-        send(level);
-        // level = getUltrasonicDistance();
-        // sendLevel(level);
-
+        level = getUltrasonicDistance();
+        levelStr = ((char)(level+'0'))+"* ";
+        Serial.print(levelStr);
+        send(levelStr);
         previousMillis = millis();  //reset timer
 
         digitalWrite(13, HIGH);
@@ -160,16 +158,16 @@ void loop() {
 void setDirection(char motor, bool direction){  //1 = forwards, 0 = backwards
   Serial.print("setting direction to "); Serial.println(direction);
   if(motor == 'r'){
-    digitalWrite(rfpos, (int)direction);
-    digitalWrite(rfneg, (int)!direction);
-    digitalWrite(rbpos, (int)direction);
-    digitalWrite(rbneg, (int)!direction);
+    digitalWrite(rfpos, (int) direction);
+    digitalWrite(rfneg, (int) !direction);
+    digitalWrite(rbpos, (int) direction);
+    digitalWrite(rbneg, (int) !direction);
   }
   else if(motor == 'l'){                        //the left wheels are reversed
-    digitalWrite(lfpos, (int)!direction);
-    digitalWrite(lfneg, (int)direction);
-    digitalWrite(lbpos, (int)!direction);
-    digitalWrite(lbneg, (int)direction);
+    digitalWrite(lfpos, (int) !direction);
+    digitalWrite(lfneg, (int) direction);
+    digitalWrite(lbpos, (int) !direction);
+    digitalWrite(lbneg, (int) direction);
   }
 }
 
@@ -192,14 +190,14 @@ void setSpeed(int pwmr, int pwml){
 }
 
 int clip(int num){
-  if(num >= -100 && num <= 100) return 0;
-  if(num >= 0 && num <= 255) return num;
-  else if(num >= -255 && num < 0) return -num;
-  else if(num > 255 || num < -255) return 255;
-  return 0;
+  if(num>=-100 && num<=100) return 0;
+  if(num>=0 && num<=255) return num;
+  else if(num>=-255 && num<0) return -num;
+  else if(num>255 || num<-255) return 255;
+  else return 0;
 }
 
-int getUltrasonicDistance() {
+int getUltrasonicDistance(){
   long duration;
   double distanceCm;
 
@@ -212,7 +210,7 @@ int getUltrasonicDistance() {
   pinMode(echoPin, INPUT);
   duration = pulseIn(echoPin, HIGH);
 
-  distanceCm = (double)duration * 0.01715;
+  distanceCm = (double) duration * 0.01715;
 
   if(distanceCm < 20) return 5;
   else if(distanceCm < 40) return 4;
@@ -222,34 +220,11 @@ int getUltrasonicDistance() {
   else return 0;
 }
 
-void send(String s){
-  rf69.send(toData(s), RADIOPACKET_MAX_LENGTH);
-  rf69.waitPacketSent();
-}
-
-uint8_t* toData(String s) {
+void send(String s) {
   char radiopacket[RADIOPACKET_MAX_LENGTH];
   s.toCharArray(radiopacket, 20);
-  // for(int i=0; i<s.length(); i++)
-  //   radiopacket[i] = s[i];
-  return (uint8_t*)radiopacket;
+// for(int i=0; i<s.length(); i++)
+//   radiopacket[i] = s[i];
+  rf69.send((uint8_t*)radiopacket, RADIOPACKET_MAX_LENGTH);
+  rf69.waitPacketSent();
 }
-
-double scale(double number, double oldStart, double oldEnd, double newStart, double newEnd) {
-  return (((number-oldStart)*((newEnd-newStart)/(oldEnd-oldStart)))+newStart);
-}
-
-// void sendLevel(int level){
-//   char radiopacket[20];
-//   char temp[5];
-//   String tempWord = "####";
-//
-//   //Serial.print(x); Serial.print(", "); Serial.println(y);
-//   itoa((int) level, temp, 10);
-//   tempWord = temp;
-//   tempWord += "* ";
-//   tempWord.toCharArray(radiopacket, 20);
-//   //Serial.println(radiopacket);
-//   rf69.send((uint8_t *)radiopacket, strlen(radiopacket));
-//   rf69.waitPacketSent();
-// }
