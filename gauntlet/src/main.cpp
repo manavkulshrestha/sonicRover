@@ -9,12 +9,12 @@
 //defs for controller
 Adafruit_seesaw ss;
 Adafruit_DRV2605 drv;
-#define BUTTON_RIGHT 6
-#define BUTTON_DOWN  7
-#define BUTTON_LEFT  9
-#define BUTTON_UP    10
-#define BUTTON_SEL   14
-uint32_t button_mask = (1 << BUTTON_RIGHT) | (1 << BUTTON_DOWN) | (1 << BUTTON_LEFT) | (1 << BUTTON_UP) | (1 << BUTTON_SEL);
+#define BUTTON_RIGHT 1
+#define BUTTON_DOWN  2
+#define BUTTON_LEFT  3
+#define BUTTON_UP    4
+#define BUTTON_SEL   5
+uint32_t button_mask = (1<<BUTTON_UP) | (1<<BUTTON_RIGHT) | (1<<BUTTON_DOWN) | (1<<BUTTON_RIGHT) | (1<<BUTTON_SEL);
 #define IRQ_PIN   5
 
 //defs for radio
@@ -27,7 +27,7 @@ uint32_t button_mask = (1 << BUTTON_RIGHT) | (1 << BUTTON_DOWN) | (1 << BUTTON_L
 
 RH_RF69 rf69(RFM69_CS, RFM69_INT);
 
-void sendData(int x, int y, char button);
+void sendData(int x, int y, String pressed);
 void convertJoystickData(int coords[]);
 void setHapticPower(int level);
 
@@ -85,46 +85,44 @@ void loop() {
   coords[0] = ss.analogRead(2);
   coords[1] = ss.analogRead(3);
   int i, level;
-  String word, stringLevel;
+  String word, stringLevel, pressed = "00000";//ordered in order of definitions
   char temp[20];
-  char button;
   // static unsigned long currentMillis, previousMillis;
 
   if(!digitalRead(IRQ_PIN)){
     uint32_t buttons = ss.digitalReadBulk(button_mask);
     Serial.println(buttons, BIN);
-    Serial.print((unsigned short)buttons);
-    switch(((unsigned short)buttons)) {
-      //experimental and ugly. Change to bitwise logic later
-      case 18112:
-        button = 'N';
-        break;
-      case 17600:
-        button = 'L';
-        break;
-      case 18048:
-        button = 'R';
-        break;
-      case 17088:
-        button = 'U';
-        break;
-      case 17984:
-        button = 'D';
-        break;
-      case 1782:
-        button = 'S';
-        break;
-    }
-  } else {
-    button = '!';
+    // switch(((unsigned short)buttons)) {
+    //   //experimental and ugly. Change to bitwise logic later
+    //   case 18112:
+    //     button = 'N';
+    //     break;
+    //   case 17600:
+    //     button = 'L';
+    //     break;
+    //   case 18048:
+    //     button = 'R';
+    //     break;
+    //   case 17088:
+    //     button = 'U';
+    //     break;
+    //   case 17984:
+    //     button = 'D';
+    //     break;
+    //   case 1782:
+    //     button = 'S';
+    //     break;
+    // }
+    for(int i=0; i<5; i++)
+      pressed[BUTTON_UP] = '0'+(!(buttons & (1<<(BUTTON_UP+1))));
   }
 
-  Serial.print("button: "); Serial.println(button);
+  Serial.print("pressed: "); Serial.println(pressed);
   delay(10);
 
   convertJoystickData(coords);
   //Serial.print(coords[0]); Serial.print(", "); Serial.println(coords[1]);
-  sendData(coords[0], coords[1], button);
+  sendData(coords[0], coords[1], pressed);
 
   //listens for haptic data
   if(rf69.available()) {
@@ -151,7 +149,7 @@ void loop() {
   }
 }
 
-void sendData(int x, int y, char button) {
+void sendData(int x, int y, String pressed) {
   char radiopacket[20];
   char temp[5];
   String tempWord = "####";
@@ -163,7 +161,7 @@ void sendData(int x, int y, char button) {
   itoa((int) y, temp, 10);
   tempWord += temp;
   tempWord += "* ";
-  tempWord += button;
+  tempWord += pressed;
   tempWord.toCharArray(radiopacket, 20);
   //Serial.println(radiopacket);
   rf69.send((uint8_t*)radiopacket, strlen(radiopacket));

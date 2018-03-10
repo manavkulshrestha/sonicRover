@@ -96,10 +96,9 @@ void setup() {
 
 void loop(){
   String word, xcoord, ycoord;
-  int wordLength;
-  char button;
+  String pressed;
   char temp[20];
-  int i = 0, xcoordint, ycoordint;//, pwmr = 0, pwml = 0;
+  int i = 0, xcoordint, ycoordint, wordLength;//, pwmr = 0, pwml = 0;
   static unsigned long previousMillis = 0, currentMillis = 0;
   int level;
 
@@ -114,10 +113,13 @@ void loop(){
           temp[i] = (char) buf[i];
         }
         word = temp;
-        Serial.print("pre-button stuff: "); Serial.println(word);
-        button = word[(wordLength = word.length())-1];
-        Serial.print("Button: "); Serial.println(button);
-        word = word.substring(0, wordLength-2);
+        wordLength = word.length();
+        Serial.print("pre-buttons stuff: "); Serial.println(word);
+
+        pressed = word.substring(wordLength-5, wordLength);
+        Serial.print("Buttons: "); Serial.println(pressed);
+
+        word = word.substring(0, wordLength-5);
         Serial.print("Joystick stuff: "); Serial.println(word);
 
         i = 0;
