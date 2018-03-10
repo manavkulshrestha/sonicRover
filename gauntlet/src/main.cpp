@@ -92,29 +92,8 @@ void loop() {
   if(!digitalRead(IRQ_PIN)){
     uint32_t buttons = ss.digitalReadBulk(button_mask);
     Serial.println(buttons, BIN);
-    // switch(((unsigned short)buttons)) {
-    //   //experimental and ugly. Change to bitwise logic later
-    //   case 18112:
-    //     button = 'N';
-    //     break;
-    //   case 17600:
-    //     button = 'L';
-    //     break;
-    //   case 18048:
-    //     button = 'R';
-    //     break;
-    //   case 17088:
-    //     button = 'U';
-    //     break;
-    //   case 17984:
-    //     button = 'D';
-    //     break;
-    //   case 1782:
-    //     button = 'S';
-    //     break;
-    // }
     for(int i=0; i<5; i++)
-      pressed[BUTTON_UP] = '0'+(!(buttons & (1<<(BUTTON_UP+1))));
+      pressed[i] = '0'+(!(buttons & (1<<(i+1))));
   }
 
   Serial.print("pressed: "); Serial.println(pressed);
